@@ -47,8 +47,21 @@ public class LetItRollCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage("Only players can receive the wand.");
                     return true;
                 }
-                player.getInventory().addItem(WandUtil.createWand(plugin));
-                player.sendMessage(mm.deserialize("<green>Received the <gold>Slot Machine Wand</gold>!</green>"));
+                WandUtil.WandType type = WandUtil.WandType.CABINET;
+                if (args.length >= 2) {
+                    String typeArg = args[1].toLowerCase();
+                    if (typeArg.equals("cabinet")) {
+                        type = WandUtil.WandType.CABINET;
+                    } else if (typeArg.equals("base")) {
+                        type = WandUtil.WandType.BASE;
+                    } else {
+                        player.sendMessage(mm.deserialize("<red>Invalid wand type. Use: /letitroll wand [cabinet|base]</red>"));
+                        return true;
+                    }
+                }
+                player.getInventory().addItem(WandUtil.createWand(plugin, type));
+                String typeName = type == WandUtil.WandType.BASE ? "Base" : "Cabinet";
+                player.sendMessage(mm.deserialize("<green>Received the <gold>Slot Machine Wand (" + typeName + ")</gold>!</green>"));
             }
             case "list" -> {
                 var machines = machineManager.getAllMachines();
@@ -85,8 +98,46 @@ public class LetItRollCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(mm.deserialize("<green>Slot machine successfully removed.</green>"));
             }
             case "reload" -> {
+                plugin.reloadConfig();
                 machineManager.loadMachines();
                 sender.sendMessage(mm.deserialize("<green>LetItRoll configuration and machines reloaded.</green>"));
+            }
+            case "dump" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("Only players can target a block to dump.");
+                    return true;
+                }
+                Block targetBlock = player.getTargetBlockExact(5);
+                if (targetBlock == null) {
+                    player.sendMessage(mm.deserialize("<red>Look at a target block within 5 blocks to dump its structure.</red>"));
+                    return true;
+                }
+
+                int radius = 2;
+                if (args.length >= 2) {
+                    try {
+                        radius = Integer.parseInt(args[1]);
+                    } catch (NumberFormatException e) {
+                        player.sendMessage(mm.deserialize("<red>Invalid radius. Using default radius of 2.</red>"));
+                        radius = 2;
+                    }
+                }
+                radius = me.roviczzz.letItRoll.util.StructureDumper.clampRadius(radius);
+
+                me.roviczzz.letItRoll.util.StructureDumper.DumpResult result =
+                        me.roviczzz.letItRoll.util.StructureDumper.scan(targetBlock, radius);
+
+                try {
+                    java.io.File captureFile = new java.io.File(plugin.getDataFolder(), "captures/build-dump.json");
+                    me.roviczzz.letItRoll.util.StructureDumper.dumpToFile(result, captureFile);
+                    String ascii = me.roviczzz.letItRoll.util.StructureDumper.toAsciiDiagram(result);
+                    plugin.getLogger().info("\n" + ascii);
+                    player.sendMessage(mm.deserialize("<green>Structure dumped (<gold>" + result.blocks().size() +
+                            "</gold> blocks, radius <gold>" + radius + "</gold>) to <gold>captures/build-dump.json</gold> and console.</green>"));
+                } catch (java.io.IOException e) {
+                    player.sendMessage(mm.deserialize("<red>Failed to save structure dump: " + e.getMessage() + "</red>"));
+                    plugin.getLogger().severe("Error writing structure dump: " + e.getMessage());
+                }
             }
             default -> sendHelp(sender);
         }
@@ -95,17 +146,18 @@ public class LetItRollCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(mm.deserialize("<gold><b>LetItRoll Slot Machine Commands:</b></gold>"));
-        sender.sendMessage(mm.deserialize("<yellow>/letitroll wand</yellow> <gray>- Get the machine creation wand</gray>"));
+        sender.sendMessage(mm.deserialize("<yellow>/letitroll wand [cabinet|base]</yellow> <gray>- Get the machine creation wand</gray>"));
         sender.sendMessage(mm.deserialize("<yellow>/letitroll list</yellow> <gray>- List all registered machines</gray>"));
         sender.sendMessage(mm.deserialize("<yellow>/letitroll remove</yellow> <gray>- Remove the targeted machine</gray>"));
         sender.sendMessage(mm.deserialize("<yellow>/letitroll reload</yellow> <gray>- Reload machines from storage</gray>"));
+        sender.sendMessage(mm.deserialize("<yellow>/letitroll dump [radius]</yellow> <gray>- Dump target build to JSON and console</gray>"));
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("letitroll.admin")) return List.of();
         if (args.length == 1) {
-            List<String> subs = List.of("wand", "list", "remove", "reload", "help");
+            List<String> subs = List.of("wand", "list", "remove", "reload", "dump", "help");
             List<String> completions = new ArrayList<>();
             for (String s : subs) {
                 if (s.startsWith(args[0].toLowerCase())) {
@@ -113,6 +165,21 @@ public class LetItRollCommand implements CommandExecutor, TabCompleter {
                 }
             }
             return completions;
+        }
+        if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("wand")) {
+                List<String> types = List.of("cabinet", "base");
+                List<String> completions = new ArrayList<>();
+                for (String t : types) {
+                    if (t.startsWith(args[1].toLowerCase())) {
+                        completions.add(t);
+                    }
+                }
+                return completions;
+            }
+            if (args[0].equalsIgnoreCase("dump")) {
+                return List.of("1", "2", "3", "4", "5");
+            }
         }
         return List.of();
     }

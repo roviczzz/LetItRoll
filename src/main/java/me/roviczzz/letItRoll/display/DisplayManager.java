@@ -65,28 +65,32 @@ public class DisplayManager {
     }
 
     public void removeDisplays(SlotMachine machine) {
+        if (machine == null || machine.getLodestoneLocation() == null) return;
         World world = machine.getLodestoneLocation().getWorld();
         if (world == null) return;
 
         for (UUID uuid : machine.getDisplayUuids()) {
             if (uuid != null) {
-                Entity entity = Bukkit.getEntity(uuid);
-                if (entity instanceof ItemDisplay display) {
-                    display.remove();
+                try {
+                    Entity entity = Bukkit.getEntity(uuid);
+                    if (entity instanceof ItemDisplay display) {
+                        display.remove();
+                    }
+                } catch (Exception ignored) {
                 }
             }
         }
     }
 
-    public Location[] calculateSlotLocations(Location lodestoneLoc, BlockFace facing) {
+    public static Location[] calculateSlotLocations(Location lodestoneLoc, BlockFace facing) {
         float yaw = getYawForFacing(facing);
         Vector forward = getForwardVector(facing);
         Vector backward = forward.clone().multiply(-1);
         Vector right = getRightVector(facing);
 
-        // Center on top of lodestone, slightly pushed back towards shelf
+        // Center on top of lodestone, aligned within spruce shelf enclosure at Y+1.50
         Location shelfCenter = lodestoneLoc.clone()
-                .add(0.5, 1.25, 0.5)
+                .add(0.5, 1.50, 0.5)
                 .add(backward.clone().multiply(0.30));
         shelfCenter.setYaw(yaw);
         shelfCenter.setPitch(0);
