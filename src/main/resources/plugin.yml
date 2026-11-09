@@ -1,0 +1,16 @@
+name: LetItRoll
+version: '${version}'
+main: me.roviczzz.letItRoll.LetItRoll
+api-version: '1.21'
+load: POSTWORLD
+
+commands:
+  letitroll:
+    description: Manage LetItRoll slot machines
+    permission: letitroll.admin
+    aliases: [slot, slots, lir]
+
+permissions:
+  letitroll.admin:
+    description: Grants admin control over slot machines and wands
+    default: op
