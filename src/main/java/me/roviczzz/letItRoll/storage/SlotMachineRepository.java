@@ -17,11 +17,17 @@ import java.util.logging.Logger;
 public class SlotMachineRepository {
     private final File file;
     private final Logger logger;
+    private final java.util.function.Function<String, World> worldResolver;
     private YamlConfiguration config;
 
     public SlotMachineRepository(File dataFolder, Logger logger) {
+        this(dataFolder, logger, Bukkit::getWorld);
+    }
+
+    public SlotMachineRepository(File dataFolder, Logger logger, java.util.function.Function<String, World> worldResolver) {
         this.file = new File(dataFolder, "machines.yml");
         this.logger = logger;
+        this.worldResolver = worldResolver != null ? worldResolver : Bukkit::getWorld;
         loadConfig();
     }
 
@@ -40,6 +46,7 @@ public class SlotMachineRepository {
     }
 
     public Map<UUID, SlotMachine> loadAll() {
+        loadConfig();
         Map<UUID, SlotMachine> machines = new HashMap<>();
         ConfigurationSection section = config.getConfigurationSection("machines");
         if (section == null) {
@@ -54,6 +61,8 @@ public class SlotMachineRepository {
 
                 Location lodestone = deserializeLocation(machineSec.getConfigurationSection("lodestone"));
                 Location lever = deserializeLocation(machineSec.getConfigurationSection("lever"));
+                Location shelf = deserializeLocation(machineSec.getConfigurationSection("shelf"));
+                Location canopy = deserializeLocation(machineSec.getConfigurationSection("canopy"));
                 String facingStr = machineSec.getString("facing", "NORTH");
                 BlockFace facing = BlockFace.valueOf(facingStr);
 
@@ -66,7 +75,7 @@ public class SlotMachineRepository {
                 }
 
                 if (lodestone != null && lever != null) {
-                    SlotMachine machine = new SlotMachine(id, lodestone, lever, facing, displays);
+                    SlotMachine machine = new SlotMachine(id, lodestone, lever, facing, displays, shelf, canopy);
                     machines.put(id, machine);
                 }
             } catch (Exception e) {
@@ -81,6 +90,18 @@ public class SlotMachineRepository {
         config.set(path + ".lodestone", serializeLocation(machine.getLodestoneLocation()));
         config.set(path + ".lever", serializeLocation(machine.getLeverLocation()));
         config.set(path + ".facing", machine.getFacing().name());
+
+        if (machine.hasShelf()) {
+            config.set(path + ".shelf", serializeLocation(machine.getShelfLocation()));
+        } else {
+            config.set(path + ".shelf", null);
+        }
+
+        if (machine.hasCanopy()) {
+            config.set(path + ".canopy", serializeLocation(machine.getCanopyLocation()));
+        } else {
+            config.set(path + ".canopy", null);
+        }
 
         List<String> displayStrings = new ArrayList<>();
         for (UUID u : machine.getDisplayUuids()) {
@@ -127,7 +148,7 @@ public class SlotMachineRepository {
         if (section == null) return null;
         String worldName = section.getString("world");
         if (worldName == null) return null;
-        World world = Bukkit.getWorld(worldName);
+        World world = worldResolver.apply(worldName);
         if (world == null) return null;
         int x = section.getInt("x");
         int y = section.getInt("y");
