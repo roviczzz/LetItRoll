@@ -100,6 +100,7 @@ public class LetItRollCommand implements CommandExecutor, TabCompleter {
             case "reload" -> {
                 plugin.reloadConfig();
                 machineManager.loadMachines();
+                machineManager.reconcileLoadedMachines();
                 sender.sendMessage(mm.deserialize("<green>LetItRoll configuration and machines reloaded.</green>"));
             }
             case "dump" -> {
