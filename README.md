@@ -1,3 +1,4 @@
+<img width="1920" height="999" alt="2026-11-10_13 33 48" src="https://github.com/user-attachments/assets/6df87362-5ccc-4adf-8c75-5956fed4964a" />
 # LetItRoll
 
 An immersive, physical in-world slot machine plugin for **Paper 1.21.10** built with modern `ItemDisplay` entities, vanilla item economies, and zero client resource pack requirements.
