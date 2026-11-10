@@ -55,6 +55,8 @@ public class LeverInteractListener implements Listener {
             return;
         }
 
+        machineManager.reconcileMachine(machine);
+
         // Deduct 1 Diamond
         player.getInventory().removeItem(new ItemStack(Material.DIAMOND, 1));
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.6f, 1.2f);
